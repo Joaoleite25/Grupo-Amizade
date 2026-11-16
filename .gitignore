@@ -1,0 +1,36 @@
+# dependências
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+*.tsbuildinfo
+next-env.d.ts
+
+# vários
+.DS_Store
+*.pem
+npm-debug.log*
+.vercel
+
+# env files: o .env tem segredos; o .env.example é o modelo partilhado
+.env*
+!.env.example
+
+# Prisma (gerado por `prisma generate` no postinstall)
+/src/generated/prisma
+
+# Base de dados local de desenvolvimento (npm run db)
+/.pgdata
+
+# Imagens enviadas em desenvolvimento (em produção vão para o Vercel Blob)
+/public/uploads
+
+# Saída local do graphify (grafo de conhecimento; contém caminhos absolutos)
+/graphify-out/
+
+# Configuração local do Claude Code
+/.claude/
