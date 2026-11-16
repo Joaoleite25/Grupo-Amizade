@@ -1,0 +1,150 @@
+// Esquema da base de dados do site do Grupo Amizade.
+// Depois de alterar este ficheiro: npm run db:migrate
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Utilizadores, níveis e permissões ───────────────────────────────
+
+// Cada opção da área reservada corresponde a uma permissão.
+// O Master decide, na matriz de permissões, que níveis têm cada uma.
+enum Permission {
+  INTERNAL_ACTIVITIES // inscrever-se em atividades internas
+  VIEW_REGISTRATIONS // ver inscrições de todas as atividades
+  MANAGE_USERS // alterar o nível de utilizadores de nível inferior
+  EDIT_FOOTER // editar as informações do rodapé
+  CREATE_FOOTER // criar/apagar informações do rodapé
+  MANAGE_NEWS // notícias (carrossel da página principal)
+  MANAGE_ABOUT // textos "Sobre"
+  MANAGE_ACTIVITIES // criar/editar atividades
+  MANAGE_ROLES // matriz de permissões (opção "Sidebar" do relatório)
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  // Hierarquia: 1 = Utilizador, 2 = Staff, 3 = Direção, 4 = Master.
+  // Só se pode gerir utilizadores com nível inferior ao próprio.
+  level       Int          @unique
+  permissions Permission[]
+  users       User[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  name         String
+  email        String   @unique
+  birthDate    DateTime @db.Date
+  passwordHash String
+  roleId       Int
+  role         Role     @relation(fields: [roleId], references: [id])
+  createdAt    DateTime @default(now())
+
+  sessions      Session[]
+  resetTokens   PasswordResetToken[]
+  registrations Registration[]
+}
+
+// Sessões guardadas na base de dados: o cookie só tem um token aleatório
+// e aqui fica apenas o hash SHA-256 desse token.
+model Session {
+  id        String   @id // hash do token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id // hash do token enviado por email
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ─── Conteúdo do site ────────────────────────────────────────────────
+
+model News {
+  id           String   @id @default(cuid())
+  title        String
+  body         String
+  imageDesktop String
+  imageMobile  String?
+  link         String?
+  published    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AboutSection {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+enum FooterKind {
+  INFO // morada, email, telefone...
+  SOCIAL // link para rede social
+}
+
+model FooterItem {
+  id       String     @id @default(cuid())
+  kind     FooterKind @default(INFO)
+  title    String
+  content  String
+  url      String?
+  position Int        @default(0)
+}
+
+// ─── Atividades e inscrições ─────────────────────────────────────────
+
+enum Visibility {
+  INTERNAL // só Staff e acima (permissão INTERNAL_ACTIVITIES)
+  EXTERNAL // qualquer utilizador registado
+}
+
+model Activity {
+  id                String         @id @default(cuid())
+  title             String
+  description       String
+  image             String?
+  date              DateTime
+  registrationOpens DateTime
+  registrationEnds  DateTime
+  capacity          Int? // null = sem limite
+  visibility        Visibility     @default(EXTERNAL)
+  link              String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  registrations     Registration[]
+
+  @@index([date])
+}
+
+model Registration {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId   String
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  participants Int      @default(1) // número de pessoas desta inscrição
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, activityId])
+}
