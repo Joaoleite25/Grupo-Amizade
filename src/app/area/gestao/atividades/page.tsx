@@ -11,8 +11,13 @@ export const metadata: Metadata = { title: "Atividades" };
 async function loadActivities() {
   await connection();
   const activities = await db.activity.findMany({ orderBy: { date: "asc" } });
-  const totals = await db.registration.groupBy({ by: ["activityId"], _sum: { participants: true } });
-  const byId = new Map(totals.map((t) => [t.activityId, t._sum.participants ?? 0]));
+  const totals = await db.registration.groupBy({
+    by: ["activityId", "waitlisted"],
+    _sum: { participants: true },
+    _count: { _all: true },
+  });
+  const byId = new Map(totals.filter((t) => !t.waitlisted).map((t) => [t.activityId, t._sum.participants ?? 0]));
+  const waitingById = new Map(totals.filter((t) => t.waitlisted).map((t) => [t.activityId, t._count._all]));
 
   const rows: ActivityRow[] = activities.map((a) => ({
     id: a.id,
@@ -23,7 +28,11 @@ async function loadActivities() {
     capacity: a.capacity,
     visibility: a.visibility,
     link: a.link,
+    location: a.location,
+    ages: a.ages,
+    bring: a.bring,
     registered: byId.get(a.id) ?? 0,
+    waiting: waitingById.get(a.id) ?? 0,
     inputs: {
       date: toLisbonInputValue(a.date),
       registrationOpens: toLisbonInputValue(a.registrationOpens),

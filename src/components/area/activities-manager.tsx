@@ -21,7 +21,11 @@ export type ActivityRow = {
   capacity: number | null;
   visibility: "INTERNAL" | "EXTERNAL";
   link: string | null;
+  location: string | null;
+  ages: string | null;
+  bring: string | null;
   registered: number;
+  waiting: number;
   // Valores já formatados para <input type="datetime-local"> em hora de Lisboa
   inputs: { date: string; registrationOpens: string; registrationEnds: string };
 };
@@ -88,6 +92,18 @@ function ActivityFields({ state, activity }: { state: FormState; activity?: Acti
           </Select>
         </Field>
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-[1.6fr_1fr]">
+        <Field label="Local" name="location" errors={e.location} hint="Morada ou nome do sítio. Abre no mapa.">
+          <Input id="location" name="location" placeholder="Ex.: Igreja de São João de Ver" defaultValue={v?.location ?? activity?.location ?? ""} />
+        </Field>
+        <Field label="Idade recomendada" name="ages" errors={e.ages} hint="Opcional.">
+          <Input id="ages" name="ages" placeholder="Ex.: 8 aos 14 anos" defaultValue={v?.ages ?? activity?.ages ?? ""} />
+        </Field>
+      </div>
+      <Field label="O que levar" name="bring" errors={e.bring} hint="Opcional. Aparece na página e no email de confirmação.">
+        <Textarea id="bring" name="bring" rows={2} placeholder="Ex.: Calçado confortável, água e um lanche." defaultValue={v?.bring ?? activity?.bring ?? ""} />
+      </Field>
 
       <Field label="Foto" name="image" errors={e.image} hint={activity?.image ? "Deixa vazio para manter a atual." : "Opcional."}>
         <Input id="image" name="image" type="file" accept="image/*" className={fileClass} />
@@ -166,6 +182,7 @@ export function ActivitiesManager({ activities, nowMs }: { activities: ActivityR
                   <td className="px-4 py-3 tabular-nums">
                     {a.registered}
                     <span className="text-muted">{a.capacity !== null ? ` / ${a.capacity}` : " · sem limite"}</span>
+                    {a.waiting > 0 && <Badge tone="warning" className="ml-2">{a.waiting} em espera</Badge>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">

@@ -132,6 +132,9 @@ async function demo() {
           capacity: 40,
           visibility: "EXTERNAL",
           image: "/demo/cover-2.svg",
+          location: "Igreja de São João de Ver",
+          ages: "A partir dos 10 anos",
+          bring: "Calçado confortável, água e um lanche.",
         },
         {
           title: "Workshop de fotografia com telemóvel",
@@ -141,6 +144,8 @@ async function demo() {
           registrationEnds: daysFromNow(18),
           capacity: null,
           visibility: "EXTERNAL",
+          ages: "12 aos 18 anos",
+          bring: "Telemóvel com a bateria carregada.",
         },
         {
           title: "Reunião de preparação do acampamento",

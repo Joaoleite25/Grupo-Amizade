@@ -129,6 +129,10 @@ model Activity {
   capacity          Int? // null = sem limite
   visibility        Visibility     @default(EXTERNAL)
   link              String?
+  location          String? // morada ou nome do local (abre no mapa)
+  ages              String? // idade recomendada, ex.: "8 aos 14 anos"
+  bring             String? // o que levar
+
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   registrations     Registration[]
@@ -143,8 +147,28 @@ model Registration {
   activityId   String
   activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
   participants Int      @default(1) // número de pessoas desta inscrição
+  // Lista de espera: quando não há vagas, a inscrição fica em espera e é
+  // confirmada automaticamente (por ordem de chegada) se alguém cancelar.
+  waitlisted   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@unique([userId, activityId])
+  @@index([activityId, waitlisted, createdAt])
+}
+
+// ─── Definições e segurança ──────────────────────────────────────────
+
+// Definições do site editáveis na área reservada (ex.: foto do topo da página inicial).
+model Setting {
+  key   String @id
+  value String
+}
+
+// Limite de tentativas (login, registo, recuperar password) por IP ou conta,
+// para travar ataques de força bruta e registos automáticos.
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
 }

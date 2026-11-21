@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
+import { after } from "next/server";
 import { db } from "@/lib/db";
+import { lockActivity, notifyPromoted, promoteWaitlist } from "@/lib/waitlist";
 import { assertPermission, ForbiddenError } from "@/lib/auth";
-import { TAGS } from "@/lib/data";
+import { SETTINGS, TAGS } from "@/lib/data";
 import { ALL_PERMISSIONS, MASTER_LEVEL, type Permission } from "@/lib/permissions";
 import { deleteImage, fileFrom, saveImage, UploadError } from "@/lib/storage";
 import { parseLisbonDateTime } from "@/lib/utils";
@@ -120,6 +122,39 @@ export async function moveAbout(formData: FormData) {
   revalidatePath("/area/gestao/sobre");
 }
 
+/** Foto do grupo no topo da página inicial (e a sua descrição para leitores de ecrã). */
+export async function saveHeroImage(_: FormState, formData: FormData): Promise<FormState> {
+  const values = formValues(formData);
+  return guarded(values, async () => {
+    await assertPermission("MANAGE_ABOUT");
+    const alt = String(formData.get("alt") ?? "").trim().slice(0, 200);
+    const file = fileFrom(formData, "image");
+    const current = await db.setting.findUnique({ where: { key: SETTINGS.heroImage } });
+    if (!file && !current) return { errors: { image: ["Escolhe uma foto."] }, values };
+    if (!alt) return { errors: { alt: ["Descreve a foto (ex.: “O grupo no acampamento de verão”)."] }, values };
+
+    if (file) {
+      const url = await saveImage(file, "topo");
+      await db.setting.upsert({ where: { key: SETTINGS.heroImage }, create: { key: SETTINGS.heroImage, value: url }, update: { value: url } });
+      await deleteImage(current?.value);
+    }
+    await db.setting.upsert({ where: { key: SETTINGS.heroAlt }, create: { key: SETTINGS.heroAlt, value: alt }, update: { value: alt } });
+
+    updateTag(TAGS.settings);
+    revalidatePath("/area/gestao/sobre");
+    return { ok: true, message: "Foto do topo guardada." };
+  });
+}
+
+export async function removeHeroImage() {
+  await assertPermission("MANAGE_ABOUT");
+  const current = await db.setting.findUnique({ where: { key: SETTINGS.heroImage } });
+  await db.setting.deleteMany({ where: { key: { in: [SETTINGS.heroImage, SETTINGS.heroAlt] } } });
+  await deleteImage(current?.value);
+  updateTag(TAGS.settings);
+  revalidatePath("/area/gestao/sobre");
+}
+
 // ─── Rodapé ──────────────────────────────────────────────────────────
 
 export async function saveFooter(_: FormState, formData: FormData): Promise<FormState> {
@@ -180,7 +215,10 @@ export async function saveActivity(_: FormState, formData: FormData): Promise<Fo
     const capacity = d.limited === "yes" ? Number(d.capacity) : null;
 
     if (existing && capacity !== null) {
-      const sum = await db.registration.aggregate({ _sum: { participants: true }, where: { activityId: existing.id } });
+      const sum = await db.registration.aggregate({
+        _sum: { participants: true },
+        where: { activityId: existing.id, waitlisted: false },
+      });
       const registered = sum._sum.participants ?? 0;
       if (capacity < registered) {
         return { errors: { capacity: [`Já há ${registered} pessoas inscritas — o limite não pode ser menor.`] }, values };
@@ -198,11 +236,20 @@ export async function saveActivity(_: FormState, formData: FormData): Promise<Fo
       capacity,
       visibility: d.visibility,
       link: d.link ?? null,
+      location: d.location,
+      ages: d.ages,
+      bring: d.bring,
       ...(image ? { image: await saveImage(image, "atividades") } : removeImage ? { image: null } : {}),
     };
 
     if (existing) {
-      await db.activity.update({ where: { id: existing.id }, data });
+      // Se o limite aumentou (ou deixou de existir), confirma quem está na lista de espera.
+      const promoted = await db.$transaction(async (tx) => {
+        await lockActivity(tx, existing.id);
+        await tx.activity.update({ where: { id: existing.id }, data });
+        return promoteWaitlist(tx, existing.id);
+      });
+      if (promoted.length) after(() => notifyPromoted(promoted));
       if (image || removeImage) await deleteImage(existing.image);
     } else {
       await db.activity.create({ data });

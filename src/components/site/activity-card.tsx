@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { CalendarDays, Users } from "lucide-react";
+import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge, ImageFallback } from "@/components/ui/misc";
 import { registrationStatus, type ActivityWithCount, type RegistrationStatus } from "@/lib/data";
-import { dayMonth, formatDate } from "@/lib/utils";
+import { cn, dayMonth, formatDate } from "@/lib/utils";
 
 const STATUS: Record<RegistrationStatus, { label: string; tone: "accent" | "neutral" | "warning" | "danger" }> = {
   open: { label: "Inscrições abertas", tone: "accent" },
@@ -15,6 +15,40 @@ const STATUS: Record<RegistrationStatus, { label: string; tone: "accent" | "neut
 export function StatusBadge({ status }: { status: RegistrationStatus }) {
   const s = STATUS[status];
   return <Badge tone={s.tone}>{s.label}</Badge>;
+}
+
+/** Barra de ocupação das vagas. Fica laranja quando restam poucas. */
+export function CapacityBar({
+  registered,
+  capacity,
+  className,
+}: {
+  registered: number;
+  capacity: number;
+  className?: string;
+}) {
+  if (capacity <= 0) return null;
+  const pct = Math.min(100, (registered / capacity) * 100);
+  const left = Math.max(capacity - registered, 0);
+  const tone = left === 0 ? "bg-danger" : isLastSpots(left, capacity) ? "bg-amber-500" : "bg-accent";
+  return (
+    <div
+      role="meter"
+      aria-label="Vagas ocupadas"
+      aria-valuemin={0}
+      aria-valuemax={capacity}
+      aria-valuenow={Math.min(registered, capacity)}
+      aria-valuetext={`${Math.min(registered, capacity)} de ${capacity} vagas ocupadas`}
+      className={cn("h-1.5 overflow-hidden rounded-full bg-surface-2", className)}
+    >
+      <div className={cn("h-full rounded-full transition-[width] duration-500", tone)} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+/** "Últimas vagas": no máximo 5 ou menos de 20% da capacidade. */
+export function isLastSpots(left: number, capacity: number) {
+  return left > 0 && (left <= 5 || left / capacity <= 0.2);
 }
 
 export function ActivityCard({ activity, now }: { activity: ActivityWithCount; now: Date }) {
@@ -59,13 +93,25 @@ export function ActivityCard({ activity, now }: { activity: ActivityWithCount; n
             <CalendarDays className="size-3.5" />
             {formatDate(activity.date, { weekday: "short", hour: "2-digit", minute: "2-digit", year: undefined })}
           </span>
-          {left !== null && status !== "past" && (
-            <span className="inline-flex items-center gap-1.5">
-              <Users className="size-3.5" />
-              {left} vaga{left === 1 ? "" : "s"}
+          {activity.location && (
+            <span className="inline-flex min-w-0 items-center gap-1.5">
+              <MapPin className="size-3.5 shrink-0" />
+              <span className="truncate">{activity.location}</span>
             </span>
           )}
         </div>
+        {left !== null && activity.capacity! > 0 && (status === "open" || status === "full") && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="inline-flex items-center gap-1.5 text-muted">
+                <Users className="size-3.5" />
+                {left === 0 ? "Sem vagas · lista de espera" : `${left} de ${activity.capacity} vagas livres`}
+              </span>
+              {isLastSpots(left, activity.capacity!) && <span className="font-semibold text-amber-700">Últimas vagas!</span>}
+            </div>
+            <CapacityBar registered={activity.registered} capacity={activity.capacity!} />
+          </div>
+        )}
         <div>
           <StatusBadge status={status} />
         </div>

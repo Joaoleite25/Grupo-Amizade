@@ -42,6 +42,12 @@ Nova versão do site do Grupo Amizade (PAP, Informática). Refeito de raiz com t
 - **Datas sempre na hora de Lisboa**, mesmo com o servidor em UTC (inclui a mudança para a hora de verão).
 - **RGPD**: política de privacidade, consentimento no registo (com aviso para menores de 16 anos) e o próprio utilizador pode apagar a conta.
 - **Segurança**: passwords com bcrypt, sessões guardadas como hash, verificação de permissões no servidor em cada ação e mensagens de login que não revelam que contas existem.
+- **Lista de espera automática**: quando as vagas esgotam, a inscrição fica em espera; se alguém cancelar (ou a direção aumentar o limite), as inscrições em espera são confirmadas por ordem de chegada e avisadas por email.
+- **Email de confirmação** com os detalhes da atividade e botões **"Adicionar ao calendário"** (Google e ficheiro `.ics` para Apple/Outlook).
+- **Local, idade recomendada e "o que levar"** em cada atividade, com ligação para o mapa e barra de vagas ("Últimas vagas!").
+- **Página "Como participar"** com os passos e perguntas frequentes, **números do grupo** na página inicial (calculados da base de dados) e **foto do grupo no topo** (definida em Área reservada → Sobre).
+- **SEO e partilha**: `sitemap.xml`, `robots.txt`, dados estruturados de evento (schema.org) e imagens de partilha geradas para cada atividade.
+- **Limite de tentativas** no login, registo e recuperação da password (contra força bruta e robôs), mais um campo-armadilha no registo.
 - **Calendário de atividades** (vista mensal), acessibilidade (navegação por teclado, foco visível, `prefers-reduced-motion`) e exportação de inscritos para Excel (CSV).
 
 ## Estrutura

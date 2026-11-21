@@ -8,6 +8,7 @@ import { login, register, requestPasswordReset, resetPassword } from "@/app/acti
 import { Field, Input } from "@/components/ui/field";
 import { SubmitButton } from "@/components/ui/client";
 import { FormMessage } from "@/components/ui/misc";
+import { HONEYPOT } from "@/lib/validation";
 
 function PasswordInput(props: React.ComponentProps<"input">) {
   const [show, setShow] = useState(false);
@@ -61,6 +62,11 @@ export function RegisterForm() {
   return (
     <form action={action} className="grid gap-4">
       <FormMessage state={state} />
+      {/* Armadilha para robôs: escondida das pessoas e dos leitores de ecrã. */}
+      <div aria-hidden className="absolute -left-[9999px] size-px overflow-hidden">
+        <label htmlFor={HONEYPOT}>Não preenchas este campo</label>
+        <input id={HONEYPOT} name={HONEYPOT} type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+      </div>
       <Field label="Nome completo" name="name" errors={e.name}>
         <Input id="name" name="name" autoComplete="name" defaultValue={v.name} required />
       </Field>

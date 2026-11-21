@@ -22,7 +22,7 @@ export default async function DashboardPage() {
     ? await Promise.all([
         db.user.count(),
         db.activity.count({ where: { date: { gte: now } } }),
-        db.registration.aggregate({ _sum: { participants: true }, where: { activity: { date: { gte: now } } } }),
+        db.registration.aggregate({ _sum: { participants: true }, where: { waitlisted: false, activity: { date: { gte: now } } } }),
         db.news.count({ where: { published: true } }),
       ])
     : null;

@@ -16,6 +16,7 @@ export default async function ManageRegistrationsPage() {
     by: ["activityId"],
     _sum: { participants: true },
     _count: { _all: true },
+    where: { waitlisted: false },
   });
   const byId = new Map(totals.map((t) => [t.activityId, t]));
 

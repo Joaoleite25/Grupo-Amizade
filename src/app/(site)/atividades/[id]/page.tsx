@@ -3,21 +3,34 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { ArrowLeft, CalendarClock, CalendarDays, ExternalLink, Lock, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  Baby,
+  Backpack,
+  CalendarClock,
+  CalendarDays,
+  CalendarPlus,
+  ExternalLink,
+  Lock,
+  MapPin,
+  Users,
+} from "lucide-react";
 import { db } from "@/lib/db";
 import { getActivity, registrationStatus } from "@/lib/data";
 import { can, getCurrentUser } from "@/lib/auth";
+import { activityUrl, googleCalendarUrl, mapsUrl, siteUrl } from "@/lib/calendar";
 import { excerpt, formatDateTime } from "@/lib/utils";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, ImageFallback } from "@/components/ui/misc";
 import { Container } from "@/components/site/section";
-import { StatusBadge } from "@/components/site/activity-card";
+import { CapacityBar, StatusBadge } from "@/components/site/activity-card";
 import { RegistrationForm } from "@/components/site/registration-form";
 
 export async function generateMetadata({ params }: PageProps<"/atividades/[id]">): Promise<Metadata> {
   const a = await getActivity((await params).id);
   if (!a || a.visibility === "INTERNAL") return { title: "Atividade" };
-  return { title: a.title, description: excerpt(a.description, 160) };
+  const description = excerpt(a.description, 160);
+  return { title: a.title, description, openGraph: { title: a.title, description, type: "website" } };
 }
 
 export default function ActivityPage({ params }: PageProps<"/atividades/[id]">) {
@@ -67,6 +80,26 @@ async function ActivityDetail({ id }: { id: string }) {
           )}
         </div>
         <div className="mt-8 max-w-2xl text-lg leading-relaxed whitespace-pre-line text-fg/90">{activity.description}</div>
+        {(activity.ages || activity.bring) && (
+          <div className="mt-8 grid max-w-2xl gap-4 sm:grid-cols-2">
+            {activity.ages && (
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <p className="flex items-center gap-2 text-sm text-muted">
+                  <Baby className="size-4 text-accent" /> Idade recomendada
+                </p>
+                <p className="mt-1 font-medium">{activity.ages}</p>
+              </div>
+            )}
+            {activity.bring && (
+              <div className="rounded-2xl border border-border bg-surface p-5">
+                <p className="flex items-center gap-2 text-sm text-muted">
+                  <Backpack className="size-4 text-accent" /> O que levar
+                </p>
+                <p className="mt-1 font-medium whitespace-pre-line">{activity.bring}</p>
+              </div>
+            )}
+          </div>
+        )}
         {activity.link && (
           <a href={activity.link} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "md", "mt-8")}>
             Mais informação <ExternalLink />
@@ -84,6 +117,24 @@ async function ActivityDetail({ id }: { id: string }) {
                 <dd className="font-medium">{formatDateTime(activity.date)}</dd>
               </div>
             </div>
+            {activity.location && (
+              <div className="flex gap-3">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-accent" />
+                <div>
+                  <dt className="text-muted">Onde</dt>
+                  <dd className="font-medium">
+                    <a
+                      href={mapsUrl(activity.location)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline decoration-border underline-offset-4 hover:text-accent hover:decoration-accent"
+                    >
+                      {activity.location}
+                    </a>
+                  </dd>
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <CalendarClock className="mt-0.5 size-4 shrink-0 text-accent" />
               <div>
@@ -100,47 +151,96 @@ async function ActivityDetail({ id }: { id: string }) {
               <div>
                 <dt className="text-muted">Vagas</dt>
                 <dd className="font-medium">
-                  {left === null ? "Sem limite" : `${left} de ${activity.capacity} disponíveis`}
+                  {left === null ? "Sem limite" : left === 0 ? "Esgotado" : `${left} de ${activity.capacity} disponíveis`}
                 </dd>
+                {activity.waiting > 0 && (
+                  <dd className="mt-0.5 text-xs text-muted">
+                    {activity.waiting} inscriç{activity.waiting === 1 ? "ão" : "ões"} na lista de espera
+                  </dd>
+                )}
               </div>
             </div>
           </dl>
-          {left !== null && activity.capacity! > 0 && (
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-2">
-              <div
-                className="h-full rounded-full bg-accent"
-                style={{ width: `${Math.min(100, (activity.registered / activity.capacity!) * 100)}%` }}
-              />
-            </div>
+          {activity.capacity !== null && status !== "past" && (
+            <CapacityBar registered={activity.registered} capacity={activity.capacity} className="mt-4" />
           )}
           <div className="mt-6 border-t border-border pt-6">
             <Suspense fallback={<div className="h-10 animate-pulse rounded-lg bg-surface-2" />}>
-              <RegistrationPanel activityId={activity.id} status={status} left={left} />
+              <RegistrationPanel activity={activity} status={status} left={left} />
             </Suspense>
           </div>
         </Card>
       </aside>
+      {activity.visibility === "EXTERNAL" && <EventJsonLd activity={activity} />}
     </div>
   );
 }
 
+/** Dados estruturados (schema.org/Event) para o Google mostrar a atividade nos resultados. */
+function EventJsonLd({ activity }: { activity: NonNullable<Awaited<ReturnType<typeof getActivity>>> }) {
+  const url = activityUrl(activity.id);
+  const image = activity.image ? new URL(activity.image, siteUrl()).toString() : undefined;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: activity.title,
+    description: excerpt(activity.description, 500),
+    startDate: activity.date.toISOString(),
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    url,
+    ...(image ? { image: [image] } : {}),
+    ...(activity.location
+      ? { location: { "@type": "Place", name: activity.location, address: activity.location } }
+      : {}),
+    ...(activity.ages ? { typicalAgeRange: activity.ages } : {}),
+    organizer: { "@type": "Organization", name: "Grupo Amizade", url: siteUrl() },
+    ...(activity.capacity !== null
+      ? { maximumAttendeeCapacity: activity.capacity, remainingAttendeeCapacity: Math.max(activity.capacity - activity.registered, 0) }
+      : {}),
+    offers: {
+      "@type": "Offer",
+      url,
+      price: 0,
+      priceCurrency: "EUR",
+      availability:
+        activity.capacity !== null && activity.registered >= activity.capacity
+          ? "https://schema.org/SoldOut"
+          : "https://schema.org/InStock",
+      validFrom: activity.registrationOpens.toISOString(),
+    },
+  };
+  return (
+    <script
+      type="application/ld+json"
+      // `<` escapado para não ser possível fechar o <script> a partir do texto da atividade.
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+    />
+  );
+}
+
 async function RegistrationPanel({
-  activityId,
+  activity,
   status,
   left,
 }: {
-  activityId: string;
+  activity: NonNullable<Awaited<ReturnType<typeof getActivity>>>;
   status: ReturnType<typeof registrationStatus>;
   left: number | null;
 }) {
+  const activityId = activity.id;
   const user = await getCurrentUser();
   if (!user) {
-    if (status !== "open") return <ClosedMessage status={status} />;
+    if (status !== "open" && status !== "full") return <ClosedMessage status={status} />;
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted">Inicia sessão para te inscreveres nesta atividade.</p>
+        <p className="text-sm text-muted">
+          {status === "full"
+            ? "Já não há vagas, mas podes entrar na lista de espera: se alguém cancelar, a tua inscrição é confirmada automaticamente."
+            : "Inicia sessão para te inscreveres nesta atividade."}
+        </p>
         <Link href={`/entrar?next=/atividades/${activityId}`} className={buttonClass("primary", "md", "w-full")}>
-          Entrar para me inscrever
+          {status === "full" ? "Entrar para a lista de espera" : "Entrar para me inscrever"}
         </Link>
         <p className="text-center text-xs text-muted">
           Ainda não tens conta?{" "}
@@ -156,23 +256,69 @@ async function RegistrationPanel({
     where: { userId_activityId: { userId: user.id, activityId } },
   });
 
-  // Pode alterar a inscrição enquanto as inscrições estiverem abertas (mesmo se esgotado).
-  const canEdit = status === "open" || (status === "full" && !!registration);
+  const position = registration?.waitlisted
+    ? await db.registration.count({
+        where: { activityId, waitlisted: true, createdAt: { lte: registration.createdAt } },
+      })
+    : null;
+  const calendar =
+    registration && !registration.waitlisted && status !== "past" ? <CalendarLinks activity={activity} /> : null;
+
+  // Enquanto as inscrições estiverem abertas pode inscrever-se, alterar ou entrar na lista de espera.
+  const canEdit = status === "open" || status === "full";
   if (!canEdit) {
     return (
-      <div className="space-y-2">
-        {registration && (
-          <p className="rounded-lg bg-accent-soft px-3 py-2.5 text-sm font-medium text-accent-soft-fg">
-            Estás inscrito ({registration.participants} pessoa{registration.participants === 1 ? "" : "s"}).
-          </p>
-        )}
+      <div className="space-y-3">
+        {registration && <RegistrationNotice participants={registration.participants} position={position} />}
         <ClosedMessage status={status} />
+        {calendar}
       </div>
     );
   }
 
-  const max = Math.min(20, (left ?? 20) + (registration?.participants ?? 0));
-  return <RegistrationForm activityId={activityId} current={registration?.participants ?? null} max={max} />;
+  // Quem está confirmado só pode aumentar até às vagas livres; na lista de espera pode pedir até 20.
+  const max = registration && !registration.waitlisted ? Math.min(20, (left ?? 20) + registration.participants) : 20;
+  return (
+    <div className="space-y-4">
+      <RegistrationForm
+        activityId={activityId}
+        current={registration?.participants ?? null}
+        max={max}
+        waitlistPosition={position}
+        joinsWaitlist={!registration && (status === "full" || activity.waiting > 0)}
+      />
+      {calendar}
+    </div>
+  );
+}
+
+function RegistrationNotice({ participants, position }: { participants: number; position: number | null }) {
+  const people = `${participants} pessoa${participants === 1 ? "" : "s"}`;
+  return position !== null ? (
+    <p className="rounded-lg bg-warning-soft px-3 py-2.5 text-sm font-medium text-warning-fg">
+      Estás na lista de espera (posição {position}, {people}).
+    </p>
+  ) : (
+    <p className="rounded-lg bg-accent-soft px-3 py-2.5 text-sm font-medium text-accent-soft-fg">Estás inscrito ({people}).</p>
+  );
+}
+
+function CalendarLinks({ activity }: { activity: NonNullable<Awaited<ReturnType<typeof getActivity>>> }) {
+  return (
+    <div className="border-t border-border pt-4">
+      <p className="mb-2 flex items-center gap-2 text-xs font-medium text-muted">
+        <CalendarPlus className="size-3.5" /> Adicionar ao calendário
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <a href={googleCalendarUrl(activity)} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary", "sm")}>
+          Google
+        </a>
+        <a href={`/atividades/${activity.id}/calendario`} className={buttonClass("secondary", "sm")}>
+          Apple / Outlook
+        </a>
+      </div>
+    </div>
+  );
 }
 
 function ClosedMessage({ status }: { status: ReturnType<typeof registrationStatus> }) {

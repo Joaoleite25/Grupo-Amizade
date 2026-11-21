@@ -63,7 +63,12 @@ function RegistrationList({ title, items, editable }: { title: string; items: It
               </div>
               <p className="mt-0.5 text-sm text-muted">{formatDateTime(r.activity.date)}</p>
             </div>
-            <Badge tone={editable ? "accent" : "neutral"} className="self-start sm:self-center">
+            {r.waitlisted && (
+              <Badge tone="warning" className="self-start sm:self-center">
+                Lista de espera
+              </Badge>
+            )}
+            <Badge tone={editable && !r.waitlisted ? "accent" : "neutral"} className="self-start sm:self-center">
               {r.participants} pessoa{r.participants === 1 ? "" : "s"}
             </Badge>
             {editable && (

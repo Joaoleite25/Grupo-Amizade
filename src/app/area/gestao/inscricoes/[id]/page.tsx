@@ -26,13 +26,15 @@ export default async function ActivityRegistrationsPage({ params }: PageProps<"/
     include: {
       registrations: {
         include: { user: { select: { name: true, username: true, email: true, birthDate: true } } },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ waitlisted: "asc" }, { createdAt: "asc" }],
       },
     },
   });
   if (!activity) notFound();
 
-  const people = activity.registrations.reduce((s, r) => s + r.participants, 0);
+  const confirmed = activity.registrations.filter((r) => !r.waitlisted);
+  const waiting = activity.registrations.filter((r) => r.waitlisted);
+  const people = confirmed.reduce((s, r) => s + r.participants, 0);
 
   return (
     <>
@@ -57,8 +59,10 @@ export default async function ActivityRegistrationsPage({ params }: PageProps<"/
           <p className="text-sm text-muted">Pessoas</p>
         </Card>
         <Card className="p-5">
-          <p className="text-3xl font-semibold tabular-nums">{activity.registrations.length}</p>
-          <p className="text-sm text-muted">Inscrições</p>
+          <p className="text-3xl font-semibold tabular-nums">{confirmed.length}</p>
+          <p className="text-sm text-muted">
+            Inscrições{waiting.length > 0 && ` · ${waiting.length} em espera`}
+          </p>
         </Card>
         <Card className="p-5">
           <p className="text-3xl font-semibold tabular-nums">
@@ -71,36 +75,62 @@ export default async function ActivityRegistrationsPage({ params }: PageProps<"/
       {activity.registrations.length === 0 ? (
         <EmptyState icon={<Users />} title="Ainda ninguém se inscreveu" />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
-          <table className="w-full min-w-[40rem] text-sm">
-            <thead className="border-b border-border text-left text-xs text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Nome</th>
-                <th className="px-4 py-3 font-medium">Email</th>
-                <th className="px-4 py-3 font-medium">Idade</th>
-                <th className="px-4 py-3 font-medium">Pessoas</th>
-                <th className="px-4 py-3 font-medium">Inscrito em</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {activity.registrations.map((r) => (
-                <tr key={r.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{r.user.name}</p>
-                    <p className="text-xs text-muted">@{r.user.username}</p>
-                  </td>
-                  <td className="px-4 py-3 text-muted">{r.user.email}</td>
-                  <td className="px-4 py-3 tabular-nums">{age(r.user.birthDate, activity.date)}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone="accent">{r.participants}</Badge>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted">{formatDate(r.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-10">
+          {confirmed.length > 0 && <RegistrationTable rows={confirmed} activityDate={activity.date} />}
+          {waiting.length > 0 && (
+            <section>
+              <h2 className="mb-1 text-sm font-semibold tracking-wider text-muted uppercase">Lista de espera</h2>
+              <p className="mb-3 text-sm text-muted">
+                Por ordem de chegada. São confirmadas automaticamente (e avisadas por email) quando abrem vagas.
+              </p>
+              <RegistrationTable rows={waiting} activityDate={activity.date} numbered />
+            </section>
+          )}
         </div>
       )}
     </>
+  );
+}
+
+type Row = {
+  id: string;
+  participants: number;
+  createdAt: Date;
+  user: { name: string; username: string; email: string; birthDate: Date };
+};
+
+function RegistrationTable({ rows, activityDate, numbered }: { rows: Row[]; activityDate: Date; numbered?: boolean }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
+      <table className="w-full min-w-[40rem] text-sm">
+        <thead className="border-b border-border text-left text-xs text-muted">
+          <tr>
+            {numbered && <th className="w-10 px-4 py-3 font-medium">#</th>}
+            <th className="px-4 py-3 font-medium">Nome</th>
+            <th className="px-4 py-3 font-medium">Email</th>
+            <th className="px-4 py-3 font-medium">Idade</th>
+            <th className="px-4 py-3 font-medium">Pessoas</th>
+            <th className="px-4 py-3 font-medium">Inscrito em</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map((r, i) => (
+            <tr key={r.id}>
+              {numbered && <td className="px-4 py-3 text-muted tabular-nums">{i + 1}</td>}
+              <td className="px-4 py-3">
+                <p className="font-medium">{r.user.name}</p>
+                <p className="text-xs text-muted">@{r.user.username}</p>
+              </td>
+              <td className="px-4 py-3 text-muted">{r.user.email}</td>
+              <td className="px-4 py-3 tabular-nums">{age(r.user.birthDate, activityDate)}</td>
+              <td className="px-4 py-3">
+                <Badge tone={numbered ? "warning" : "accent"}>{r.participants}</Badge>
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-muted">{formatDate(r.createdAt)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

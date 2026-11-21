@@ -11,6 +11,7 @@ export const TAGS = {
   about: "about",
   footer: "footer",
   activities: "activities",
+  settings: "settings",
 } as const;
 
 export async function getNews({ onlyPublished = true, limit }: { onlyPublished?: boolean; limit?: number } = {}) {
@@ -59,7 +60,7 @@ export async function getActivities(visibility: Visibility = "EXTERNAL") {
   const totals = await db.registration.groupBy({
     by: ["activityId"],
     _sum: { participants: true },
-    where: { activityId: { in: activities.map((a) => a.id) } },
+    where: { activityId: { in: activities.map((a) => a.id) }, waitlisted: false },
   });
   const byId = new Map(totals.map((t) => [t.activityId, t._sum.participants ?? 0]));
   return activities.map((a) => ({ ...a, registered: byId.get(a.id) ?? 0 }));
@@ -71,11 +72,41 @@ export async function getActivity(id: string) {
   cacheTag(TAGS.activities);
   const activity = await db.activity.findUnique({ where: { id } });
   if (!activity) return null;
-  const sum = await db.registration.aggregate({
-    _sum: { participants: true },
-    where: { activityId: id },
-  });
-  return { ...activity, registered: sum._sum.participants ?? 0 };
+  const [confirmed, waiting] = await Promise.all([
+    db.registration.aggregate({ _sum: { participants: true }, where: { activityId: id, waitlisted: false } }),
+    db.registration.count({ where: { activityId: id, waitlisted: true } }),
+  ]);
+  return { ...activity, registered: confirmed._sum.participants ?? 0, waiting };
+}
+
+/** Números do grupo para a página inicial (calculados a partir da base de dados). */
+export async function getImpactStats() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.activities);
+  // Conta só o que já aconteceu: atividades realizadas e quem participou nelas.
+  // A data de referência é arredondada ao dia, para a cache não mudar a cada pedido.
+  const today = new Date(new Date().toISOString().slice(0, 10));
+  const [activities, people, members] = await Promise.all([
+    db.activity.count({ where: { date: { lt: today } } }),
+    db.registration.aggregate({
+      _sum: { participants: true },
+      where: { waitlisted: false, activity: { date: { lt: today } } },
+    }),
+    db.user.count(),
+  ]);
+  return { activities, participations: people._sum.participants ?? 0, members };
+}
+
+/** Definições do site (ex.: foto do topo da página inicial). */
+export const SETTINGS = { heroImage: "heroImage", heroAlt: "heroAlt" } as const;
+
+export async function getSettings() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(TAGS.settings);
+  const rows = await db.setting.findMany();
+  return Object.fromEntries(rows.map((r) => [r.key, r.value])) as Partial<Record<keyof typeof SETTINGS, string>>;
 }
 
 export type RegistrationStatus = "soon" | "open" | "closed" | "full" | "past";

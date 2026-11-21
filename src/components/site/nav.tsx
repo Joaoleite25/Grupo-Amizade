@@ -10,6 +10,7 @@ export const NAV = [
   { href: "/noticias", label: "Notícias" },
   { href: "/sobre", label: "Sobre" },
   { href: "/atividades", label: "Atividades" },
+  { href: "/como-participar", label: "Como participar" },
 ];
 
 function useIsActive() {

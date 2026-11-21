@@ -9,6 +9,9 @@ export type FormState = {
   values?: Record<string, string>;
 } | undefined;
 
+/** Nome do campo-armadilha do registo (escondido das pessoas; os robôs preenchem-no). */
+export const HONEYPOT = "website";
+
 export function fieldErrors(error: z.ZodError) {
   return z.flattenError(error).fieldErrors as Record<string, string[]>;
 }
@@ -26,6 +29,15 @@ const optionalUrl = z
   .trim()
   .transform((v) => v || undefined)
   .pipe(z.url({ error: "Link inválido (tem de começar por https://)." }).optional());
+
+/** Texto opcional: vazio passa a null. */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, { error: `No máximo ${max} caracteres.` })
+    .optional()
+    .transform((v) => v || null);
 
 export const passwordSchema = z
   .string()
@@ -121,6 +133,9 @@ export const ActivitySchema = z
     capacity: z.string().optional(),
     visibility: z.enum(["INTERNAL", "EXTERNAL"]),
     link: optionalUrl,
+    location: optionalText(200),
+    ages: optionalText(60),
+    bring: optionalText(500),
   })
   .refine((d) => d.limited === "no" || (Number(d.capacity) >= 1 && Number.isInteger(Number(d.capacity))), {
     error: "Indica um limite (número inteiro maior que 0).",
