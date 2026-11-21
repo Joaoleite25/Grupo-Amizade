@@ -7,7 +7,8 @@ import { can, getCurrentUser } from "@/lib/auth";
 import { TAGS, registrationStatus } from "@/lib/data";
 import { registrationConfirmedEmail, sendEmailSafely, waitlistEmail } from "@/lib/email";
 import { confirmedPeople, lockActivity, notifyPromoted, promoteWaitlist, waitlistPosition, type Promoted } from "@/lib/waitlist";
-import { ParticipantsSchema, type FormState } from "@/lib/validation";
+import { GuardianSchema, ParticipantsSchema, fieldErrors, formValues, type FormState } from "@/lib/validation";
+import { GUARDIAN_AGE, ageOn } from "@/lib/utils";
 
 class RegistrationError extends Error {}
 
@@ -31,6 +32,20 @@ export async function saveRegistration(_: FormState, formData: FormData): Promis
   const participants = ParticipantsSchema.safeParse(formData.get("participants") ?? "1");
   if (!participants.success) return { errors: { participants: [participants.error.issues[0]!.message] } };
   const n = participants.data;
+
+  // Menores de 16 anos (no dia da atividade) precisam da autorização do encarregado de educação.
+  // A idade vem sempre da data de nascimento da conta, nunca do formulário.
+  const target = await db.activity.findUnique({ where: { id: activityId }, select: { date: true } });
+  let guardian: { guardianName: string; guardianPhone: string; guardianConsentAt: Date } | null = null;
+  if (target && ageOn(user.birthDate, target.date) < GUARDIAN_AGE) {
+    const parsed = GuardianSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return { errors: fieldErrors(parsed.error), values: formValues(formData) };
+    guardian = {
+      guardianName: parsed.data.guardianName,
+      guardianPhone: parsed.data.guardianPhone,
+      guardianConsentAt: new Date(),
+    };
+  }
 
   let outcome: Outcome;
   let promoted: Promoted[] = [];
@@ -62,7 +77,7 @@ export async function saveRegistration(_: FormState, formData: FormData): Promis
             `Só há lugar para ${left} pessoa${left === 1 ? "" : "s"} nesta inscrição. Para mais, cancela e volta a inscrever-te na lista de espera.`,
           );
         }
-        await tx.registration.update({ where: { id: existing.id }, data: { participants: n } });
+        await tx.registration.update({ where: { id: existing.id }, data: { participants: n, ...guardian } });
         // Se reduziu o número de pessoas, pode haver vagas para a lista de espera.
         const promoted = n < existing.participants ? await promoteWaitlist(tx, activityId) : [];
         return { outcome: { kind: "updated" } as Outcome, promoted, activity };
@@ -70,7 +85,7 @@ export async function saveRegistration(_: FormState, formData: FormData): Promis
 
       // 2) Está em lista de espera: atualiza o pedido e vê se já cabe.
       if (existing) {
-        await tx.registration.update({ where: { id: existing.id }, data: { participants: n } });
+        await tx.registration.update({ where: { id: existing.id }, data: { participants: n, ...guardian } });
         const promoted = await promoteWaitlist(tx, activityId);
         if (promoted.some((p) => p.id === existing.id)) {
           return { outcome: { kind: "confirmed" } as Outcome, promoted: promoted.filter((p) => p.id !== existing.id), activity };
@@ -82,11 +97,11 @@ export async function saveRegistration(_: FormState, formData: FormData): Promis
       // 3) Inscrição nova. Se já há fila, entra na fila: ninguém passa à frente.
       const queue = await tx.registration.count({ where: { activityId, waitlisted: true } });
       if (fits && queue === 0) {
-        await tx.registration.create({ data: { userId: user.id, activityId, participants: n } });
+        await tx.registration.create({ data: { userId: user.id, activityId, participants: n, ...guardian } });
         return { outcome: { kind: "confirmed" } as Outcome, promoted: [], activity };
       }
       const created = await tx.registration.create({
-        data: { userId: user.id, activityId, participants: n, waitlisted: true },
+        data: { userId: user.id, activityId, participants: n, waitlisted: true, ...guardian },
       });
       const position = await waitlistPosition(tx, created);
       return { outcome: { kind: "waitlisted", position } as Outcome, promoted: [], activity };

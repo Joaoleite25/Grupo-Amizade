@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/area/gestao/inscric
   if (!activity) return new Response("Não encontrada", { status: 404 });
 
   const rows = [
-    ["Nome", "Utilizador", "Email", "Data de nascimento", "Pessoas", "Estado", "Inscrito em"],
+    ["Nome", "Utilizador", "Email", "Data de nascimento", "Pessoas", "Estado", "Encarregado de educação", "Contacto do encarregado", "Inscrito em"],
     ...activity.registrations.map((r) => [
       r.user.name,
       r.user.username,
@@ -25,6 +25,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/area/gestao/inscric
       r.user.birthDate.toISOString().slice(0, 10),
       r.participants,
       r.waitlisted ? "Lista de espera" : "Confirmada",
+      r.guardianName ?? "",
+      r.guardianPhone ?? "",
       formatDate(r.createdAt),
     ]),
   ];

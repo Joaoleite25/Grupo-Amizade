@@ -19,7 +19,7 @@ import { db } from "@/lib/db";
 import { getActivity, registrationStatus } from "@/lib/data";
 import { can, getCurrentUser } from "@/lib/auth";
 import { activityUrl, googleCalendarUrl, mapsUrl, siteUrl } from "@/lib/calendar";
-import { excerpt, formatDateTime } from "@/lib/utils";
+import { GUARDIAN_AGE, ageOn, excerpt, formatDateTime, formatDateTimeRange } from "@/lib/utils";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, ImageFallback } from "@/components/ui/misc";
 import { Container } from "@/components/site/section";
@@ -114,7 +114,7 @@ async function ActivityDetail({ id }: { id: string }) {
               <CalendarDays className="mt-0.5 size-4 shrink-0 text-accent" />
               <div>
                 <dt className="text-muted">Quando</dt>
-                <dd className="font-medium">{formatDateTime(activity.date)}</dd>
+                <dd className="font-medium">{formatDateTimeRange(activity.date, activity.endsAt)}</dd>
               </div>
             </div>
             {activity.location && (
@@ -186,6 +186,7 @@ function EventJsonLd({ activity }: { activity: NonNullable<Awaited<ReturnType<ty
     name: activity.title,
     description: excerpt(activity.description, 500),
     startDate: activity.date.toISOString(),
+    ...(activity.endsAt ? { endDate: activity.endsAt.toISOString() } : {}),
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     url,
@@ -286,6 +287,11 @@ async function RegistrationPanel({
         max={max}
         waitlistPosition={position}
         joinsWaitlist={!registration && (status === "full" || activity.waiting > 0)}
+        guardian={
+          ageOn(user.birthDate, activity.date) < GUARDIAN_AGE
+            ? { name: registration?.guardianName ?? "", phone: registration?.guardianPhone ?? "" }
+            : null
+        }
       />
       {calendar}
     </div>

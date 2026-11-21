@@ -7,6 +7,36 @@ import { cancelRegistration, saveRegistration } from "@/app/actions/registration
 import { ConfirmSubmit, SubmitButton } from "@/components/ui/client";
 import { FormMessage } from "@/components/ui/misc";
 import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
+import { Field, Input } from "@/components/ui/field";
+import type { FormState } from "@/lib/validation";
+
+/** Dados e autorização do encarregado de educação (participantes com menos de 16 anos). */
+function GuardianFields({ guardian, state }: { guardian: { name: string; phone: string }; state: FormState }) {
+  const e = state?.errors ?? {};
+  const v = state?.values;
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-border bg-surface-2/50 p-4">
+      <legend className="flex items-center gap-1.5 px-1 text-sm font-semibold">
+        <ShieldCheck className="size-4 text-accent" /> Autorização do encarregado de educação
+      </legend>
+      <p className="text-xs text-muted">Como tens menos de 16 anos, precisamos dos dados e da autorização de um encarregado de educação.</p>
+      <Field label="Nome do encarregado" name="guardianName" errors={e.guardianName}>
+        <Input id="guardianName" name="guardianName" autoComplete="off" defaultValue={v?.guardianName ?? guardian.name} required />
+      </Field>
+      <Field label="Telemóvel do encarregado" name="guardianPhone" errors={e.guardianPhone}>
+        <Input id="guardianPhone" name="guardianPhone" type="tel" inputMode="tel" autoComplete="off" placeholder="912 345 678" defaultValue={v?.guardianPhone ?? guardian.phone} required />
+      </Field>
+      <label className="flex items-start gap-2.5 text-sm">
+        <input type="checkbox" name="guardianConsent" className="mt-0.5 size-4 shrink-0 accent-[var(--accent)]" defaultChecked={v?.guardianConsent === "on"} required />
+        <span>O encarregado de educação autoriza a participação nesta atividade.</span>
+      </label>
+      {e.guardianConsent?.map((m) => (
+        <p key={m} className="text-xs font-medium text-danger">{m}</p>
+      ))}
+    </fieldset>
+  );
+}
 
 export function RegistrationForm({
   activityId,
@@ -14,6 +44,7 @@ export function RegistrationForm({
   max,
   waitlistPosition,
   joinsWaitlist,
+  guardian,
 }: {
   activityId: string;
   current: number | null;
@@ -22,6 +53,8 @@ export function RegistrationForm({
   waitlistPosition: number | null;
   /** Inscrição nova que vai para a lista de espera (esgotado ou já há fila). */
   joinsWaitlist: boolean;
+  /** Preenchido quando o participante tem menos de 16 anos: pede a autorização do encarregado. */
+  guardian: { name: string; phone: string } | null;
 }) {
   const [state, action] = useActionState(saveRegistration, undefined);
   const [count, setCount] = useState(current ?? 1);
@@ -96,6 +129,7 @@ export function RegistrationForm({
             </p>
           ))}
         </div>
+        {guardian && <GuardianFields guardian={guardian} state={state} />}
         {!state?.ok && <FormMessage state={state} />}
         <SubmitButton className="w-full" pendingText="A guardar...">
           {submitLabel}

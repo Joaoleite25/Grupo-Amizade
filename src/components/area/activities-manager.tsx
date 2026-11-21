@@ -27,7 +27,7 @@ export type ActivityRow = {
   registered: number;
   waiting: number;
   // Valores já formatados para <input type="datetime-local"> em hora de Lisboa
-  inputs: { date: string; registrationOpens: string; registrationEnds: string };
+  inputs: { date: string; endsAt: string; registrationOpens: string; registrationEnds: string };
 };
 
 const fileClass = "py-2 file:mr-3 file:rounded-md file:border-0 file:bg-surface-2 file:px-2 file:py-1 file:text-xs";
@@ -47,10 +47,16 @@ function ActivityFields({ state, activity }: { state: FormState; activity?: Acti
         <Textarea id="description" name="description" rows={5} defaultValue={v?.description ?? activity?.description} required />
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Data da atividade" name="date" errors={e.date}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Início da atividade" name="date" errors={e.date}>
           <Input id="date" name="date" type="datetime-local" defaultValue={v?.date ?? activity?.inputs.date} required />
         </Field>
+        <Field label="Fim" name="endsAt" errors={e.endsAt} hint="Opcional. Sem fim, os calendários assumem 2 horas.">
+          <Input id="endsAt" name="endsAt" type="datetime-local" defaultValue={v?.endsAt ?? activity?.inputs.endsAt} />
+        </Field>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Abertura inscrições" name="registrationOpens" errors={e.registrationOpens}>
           <Input
             id="registrationOpens"

@@ -169,8 +169,8 @@ async function ImpactStats() {
   "use cache";
   cacheLife("hours");
   const stats = await getImpactStats();
-  // Sem atividades realizadas ainda não há nada para mostrar.
-  if (stats.activities === 0) return null;
+  // Só aparece quando os números já dizem alguma coisa (pelo menos 5 atividades realizadas).
+  if (stats.activities < 5) return null;
 
   const items = [
     { value: stats.activities, label: stats.activities === 1 ? "atividade realizada" : "atividades realizadas" },

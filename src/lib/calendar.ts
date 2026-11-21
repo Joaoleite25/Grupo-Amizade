@@ -1,5 +1,5 @@
 // Ligações "Adicionar ao calendário" para uma atividade.
-// As atividades só têm hora de início, por isso assume-se uma duração de 2 horas.
+// Sem hora de fim definida, assume-se uma duração de 2 horas.
 
 const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
 
@@ -8,8 +8,13 @@ type CalendarActivity = {
   title: string;
   description: string;
   date: Date;
+  endsAt: Date | null;
   location: string | null;
 };
+
+function endOf(a: CalendarActivity) {
+  return a.endsAt ?? new Date(a.date.getTime() + DEFAULT_DURATION_MS);
+}
 
 /** Data em UTC no formato dos calendários: 20261123T143000Z */
 function stamp(date: Date) {
@@ -26,7 +31,7 @@ export function activityUrl(id: string) {
 
 /** Abre o Google Calendar com o evento já preenchido. */
 export function googleCalendarUrl(a: CalendarActivity) {
-  const end = new Date(a.date.getTime() + DEFAULT_DURATION_MS);
+  const end = endOf(a);
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: a.title,
@@ -78,7 +83,7 @@ export function fileSlug(text: string) {
 
 /** Ficheiro .ics (Apple Calendar, Outlook, Google...). */
 export function activityIcs(a: CalendarActivity) {
-  const end = new Date(a.date.getTime() + DEFAULT_DURATION_MS);
+  const end = endOf(a);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

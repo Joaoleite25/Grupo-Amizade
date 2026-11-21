@@ -11,11 +11,11 @@ const SECTIONS = [
   },
   {
     title: "Que dados recolhemos",
-    body: "Quando crias conta: nome completo, nome de utilizador, email, data de nascimento e palavra-passe (guardada de forma cifrada — nem nós a conseguimos ver). Quando te inscreves numa atividade: a atividade e o número de pessoas da inscrição.",
+    body: "Quando crias conta: nome completo, nome de utilizador, email, data de nascimento e palavra-passe (guardada de forma cifrada — nem nós a conseguimos ver). Quando te inscreves numa atividade: a atividade, o número de pessoas da inscrição e, se estiveres em lista de espera, a ordem de chegada. Se tiveres menos de 16 anos no dia da atividade: o nome e o telemóvel do encarregado de educação e o registo da autorização que ele deu.",
   },
   {
     title: "Para que usamos os dados",
-    body: "Para gerir a tua conta, organizar as inscrições nas atividades (incluindo o número de participantes e vagas) e, se pedires, enviar-te um email para recuperares a palavra-passe. A data de nascimento serve para organizar atividades por idades. Não enviamos publicidade nem partilhamos os dados com terceiros para fins comerciais.",
+    body: "Para gerir a tua conta, organizar as inscrições nas atividades (incluindo o número de participantes, vagas e lista de espera), enviar-te emails sobre as tuas inscrições (confirmação e aviso quando sais da lista de espera) e, se pedires, um email para recuperares a palavra-passe. A data de nascimento serve para organizar atividades por idades e para saber quando é precisa a autorização do encarregado de educação, cujo contacto só é usado para questões sobre a participação na atividade. Não enviamos publicidade nem partilhamos os dados com terceiros para fins comerciais.",
   },
   {
     title: "Quem tem acesso",

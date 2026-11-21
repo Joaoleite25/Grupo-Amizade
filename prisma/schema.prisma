@@ -119,39 +119,45 @@ enum Visibility {
 }
 
 model Activity {
-  id                String         @id @default(cuid())
+  id                String     @id @default(cuid())
   title             String
   description       String
   image             String?
   date              DateTime
+  endsAt            DateTime? // hora de fim (opcional; sem ela, os calendários assumem 2 horas)
   registrationOpens DateTime
   registrationEnds  DateTime
   capacity          Int? // null = sem limite
-  visibility        Visibility     @default(EXTERNAL)
+  visibility        Visibility @default(EXTERNAL)
   link              String?
   location          String? // morada ou nome do local (abre no mapa)
   ages              String? // idade recomendada, ex.: "8 aos 14 anos"
   bring             String? // o que levar
 
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  registrations     Registration[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  registrations Registration[]
 
   @@index([date])
 }
 
 model Registration {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activityId   String
-  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  participants Int      @default(1) // número de pessoas desta inscrição
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityId        String
+  activity          Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  participants      Int       @default(1) // número de pessoas desta inscrição
   // Lista de espera: quando não há vagas, a inscrição fica em espera e é
   // confirmada automaticamente (por ordem de chegada) se alguém cancelar.
-  waitlisted   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  waitlisted        Boolean   @default(false)
+  // Autorização do encarregado de educação, obrigatória quando o
+  // participante tem menos de 16 anos no dia da atividade.
+  guardianName      String?
+  guardianPhone     String?
+  guardianConsentAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@unique([userId, activityId])
   @@index([activityId, waitlisted, createdAt])

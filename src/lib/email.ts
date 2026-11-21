@@ -1,7 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { activityUrl, googleCalendarUrl, mapsUrl, siteUrl } from "@/lib/calendar";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTimeRange } from "@/lib/utils";
 
 type Mail = { to: string; subject: string; html: string; text: string };
 
@@ -74,13 +74,14 @@ type EmailActivity = {
   title: string;
   description: string;
   date: Date;
+  endsAt: Date | null;
   location: string | null;
   bring: string | null;
 };
 
 function details(a: EmailActivity, participants: number) {
   const rows = [
-    ["Quando", formatDateTime(a.date)],
+    ["Quando", formatDateTimeRange(a.date, a.endsAt)],
     ...(a.location ? [["Onde", a.location]] : []),
     ["Pessoas", String(participants)],
     ...(a.bring ? [["O que levar", a.bring]] : []),

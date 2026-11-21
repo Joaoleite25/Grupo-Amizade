@@ -39,6 +39,31 @@ export function formatTime(date: Date) {
   return new Intl.DateTimeFormat("pt-PT", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
+/**
+ * Início e fim de uma atividade, ex.: "3 de dezembro de 2026 às 09:00–12:30".
+ * Se acabar noutro dia, mostra as duas datas completas.
+ */
+export function formatDateTimeRange(start: Date, end: Date | null | undefined) {
+  if (!end) return formatDateTime(start);
+  if (lisbonDayKey(start) === lisbonDayKey(end)) return `${formatDateTime(start)}–${formatTime(end)}`;
+  return `${formatDateTime(start)} até ${formatDateTime(end)}`;
+}
+
+/**
+ * Idade (anos completos) num dado dia. A data de nascimento é guardada
+ * como data sem hora (meia-noite UTC), por isso compara-se em UTC.
+ */
+export function ageOn(birthDate: Date, on: Date) {
+  const day = new Date(`${lisbonDayKey(on)}T00:00:00Z`);
+  let age = day.getUTCFullYear() - birthDate.getUTCFullYear();
+  const m = day.getUTCMonth() - birthDate.getUTCMonth();
+  if (m < 0 || (m === 0 && day.getUTCDate() < birthDate.getUTCDate())) age--;
+  return age;
+}
+
+/** Idade a partir da qual já não é preciso autorização do encarregado de educação. */
+export const GUARDIAN_AGE = 16;
+
 /** Diferença (ms) entre a hora de Lisboa e UTC num dado instante. */
 function lisbonOffset(at: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {

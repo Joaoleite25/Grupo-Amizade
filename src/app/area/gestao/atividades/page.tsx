@@ -35,6 +35,7 @@ async function loadActivities() {
     waiting: waitingById.get(a.id) ?? 0,
     inputs: {
       date: toLisbonInputValue(a.date),
+      endsAt: toLisbonInputValue(a.endsAt),
       registrationOpens: toLisbonInputValue(a.registrationOpens),
       registrationEnds: toLisbonInputValue(a.registrationEnds),
     },

@@ -4,19 +4,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Download, Users } from "lucide-react";
 import { db } from "@/lib/db";
 import { requirePermission } from "@/lib/auth";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { ageOn, formatDate, formatDateTimeRange } from "@/lib/utils";
 import { buttonClass } from "@/components/ui/button";
 import { Badge, Card, EmptyState } from "@/components/ui/misc";
 import { PageHeader } from "@/components/area/page-header";
 
 export const metadata: Metadata = { title: "Inscritos" };
-
-function age(birth: Date, at: Date) {
-  let a = at.getFullYear() - birth.getFullYear();
-  const m = at.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && at.getDate() < birth.getDate())) a--;
-  return a;
-}
 
 export default async function ActivityRegistrationsPage({ params }: PageProps<"/area/gestao/inscricoes/[id]">) {
   await requirePermission("VIEW_REGISTRATIONS");
@@ -43,7 +36,7 @@ export default async function ActivityRegistrationsPage({ params }: PageProps<"/
       </Link>
       <PageHeader
         title={activity.title}
-        description={formatDateTime(activity.date)}
+        description={formatDateTimeRange(activity.date, activity.endsAt)}
         actions={
           activity.registrations.length > 0 && (
             <a href={`/area/gestao/inscricoes/${activity.id}/csv`} className={buttonClass("secondary")}>
@@ -95,11 +88,14 @@ export default async function ActivityRegistrationsPage({ params }: PageProps<"/
 type Row = {
   id: string;
   participants: number;
+  guardianName: string | null;
+  guardianPhone: string | null;
   createdAt: Date;
   user: { name: string; username: string; email: string; birthDate: Date };
 };
 
 function RegistrationTable({ rows, activityDate, numbered }: { rows: Row[]; activityDate: Date; numbered?: boolean }) {
+  const hasGuardians = rows.some((r) => r.guardianName);
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-surface">
       <table className="w-full min-w-[40rem] text-sm">
@@ -110,6 +106,7 @@ function RegistrationTable({ rows, activityDate, numbered }: { rows: Row[]; acti
             <th className="px-4 py-3 font-medium">Email</th>
             <th className="px-4 py-3 font-medium">Idade</th>
             <th className="px-4 py-3 font-medium">Pessoas</th>
+            {hasGuardians && <th className="px-4 py-3 font-medium">Encarregado de educação</th>}
             <th className="px-4 py-3 font-medium">Inscrito em</th>
           </tr>
         </thead>
@@ -122,10 +119,24 @@ function RegistrationTable({ rows, activityDate, numbered }: { rows: Row[]; acti
                 <p className="text-xs text-muted">@{r.user.username}</p>
               </td>
               <td className="px-4 py-3 text-muted">{r.user.email}</td>
-              <td className="px-4 py-3 tabular-nums">{age(r.user.birthDate, activityDate)}</td>
+              <td className="px-4 py-3 tabular-nums">{ageOn(r.user.birthDate, activityDate)}</td>
               <td className="px-4 py-3">
                 <Badge tone={numbered ? "warning" : "accent"}>{r.participants}</Badge>
               </td>
+              {hasGuardians && (
+                <td className="px-4 py-3">
+                  {r.guardianName ? (
+                    <>
+                      <p className="font-medium">{r.guardianName}</p>
+                      <a href={`tel:${r.guardianPhone}`} className="text-xs text-accent hover:underline">
+                        {r.guardianPhone}
+                      </a>
+                    </>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
+              )}
               <td className="px-4 py-3 whitespace-nowrap text-muted">{formatDate(r.createdAt)}</td>
             </tr>
           ))}

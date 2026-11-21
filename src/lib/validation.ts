@@ -127,6 +127,7 @@ export const ActivitySchema = z
     title: z.string().trim().min(3, { error: "Escreve um título." }).max(120),
     description: z.string().trim().min(10, { error: "Escreve uma descrição." }),
     date: z.string().min(1, { error: "Escolhe a data da atividade." }),
+    endsAt: z.string().optional(),
     registrationOpens: z.string().min(1, { error: "Escolhe a data de abertura." }),
     registrationEnds: z.string().min(1, { error: "Escolhe a data de fecho." }),
     limited: z.enum(["yes", "no"]),
@@ -141,6 +142,17 @@ export const ActivitySchema = z
     error: "Indica um limite (número inteiro maior que 0).",
     path: ["capacity"],
   });
+
+/** Autorização do encarregado de educação (participantes com menos de 16 anos). */
+export const GuardianSchema = z.object({
+  guardianName: z.string().trim().min(3, { error: "Escreve o nome do encarregado de educação." }).max(100),
+  guardianPhone: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/[\s-]/g, ""))
+    .pipe(z.string().regex(/^(\+?\d{9,15})$/, { error: "Telemóvel inválido (ex.: 912 345 678)." })),
+  guardianConsent: z.literal("on", { error: "O encarregado de educação tem de autorizar a participação." }),
+});
 
 export const ParticipantsSchema = z.coerce
   .number({ error: "Número inválido." })

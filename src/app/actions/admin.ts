@@ -200,10 +200,13 @@ export async function saveActivity(_: FormState, formData: FormData): Promise<Fo
     const d = parsed.data;
 
     const date = parseLisbonDateTime(d.date);
+    const endsAt = d.endsAt ? parseLisbonDateTime(d.endsAt) : null;
     const opens = parseLisbonDateTime(d.registrationOpens);
     const ends = parseLisbonDateTime(d.registrationEnds);
     const errors: Record<string, string[]> = {};
     if (!date) errors.date = ["Data inválida."];
+    if (d.endsAt && !endsAt) errors.endsAt = ["Data inválida."];
+    if (date && endsAt && endsAt <= date) errors.endsAt = ["O fim tem de ser depois do início."];
     if (!opens) errors.registrationOpens = ["Data inválida."];
     if (!ends) errors.registrationEnds = ["Data inválida."];
     if (opens && ends && ends <= opens) errors.registrationEnds = ["O fecho tem de ser depois da abertura."];
@@ -231,6 +234,7 @@ export async function saveActivity(_: FormState, formData: FormData): Promise<Fo
       title: d.title,
       description: d.description,
       date: date!,
+      endsAt,
       registrationOpens: opens!,
       registrationEnds: ends!,
       capacity,
