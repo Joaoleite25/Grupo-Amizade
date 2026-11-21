@@ -44,6 +44,7 @@ export async function saveNews(_: FormState, formData: FormData): Promise<FormSt
     const existing = id ? await db.news.findUnique({ where: { id } }) : null;
     const desktop = fileFrom(formData, "imageDesktop");
     const mobile = fileFrom(formData, "imageMobile");
+    const removeMobile = formData.get("removeImageMobile") === "on";
     if (!existing && !desktop) return { errors: { imageDesktop: ["Escolhe uma imagem."] }, values };
 
     const data = {
@@ -52,13 +53,17 @@ export async function saveNews(_: FormState, formData: FormData): Promise<FormSt
       link: parsed.data.link ?? null,
       published: parsed.data.published === "on",
       ...(desktop && { imageDesktop: await saveImage(desktop, "noticias") }),
-      ...(mobile && { imageMobile: await saveImage(mobile, "noticias") }),
+      ...(mobile
+        ? { imageMobile: await saveImage(mobile, "noticias") }
+        : removeMobile
+          ? { imageMobile: null }
+          : {}),
     };
 
     if (existing) {
       await db.news.update({ where: { id: existing.id }, data });
       if (desktop) await deleteImage(existing.imageDesktop);
-      if (mobile) await deleteImage(existing.imageMobile);
+      if (mobile || removeMobile) await deleteImage(existing.imageMobile);
     } else {
       await db.news.create({ data: { ...data, imageDesktop: data.imageDesktop! } });
     }

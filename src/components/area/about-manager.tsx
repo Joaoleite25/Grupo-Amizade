@@ -6,6 +6,7 @@ import { EntityDialog } from "@/components/area/entity-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmit } from "@/components/ui/client";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { FormSection } from "@/components/ui/form-kit";
 import { EmptyState } from "@/components/ui/misc";
 import { excerpt } from "@/lib/utils";
 import type { FormState } from "@/lib/validation";
@@ -18,12 +19,14 @@ function AboutFields({ state, section }: { state: FormState; section?: Section }
   return (
     <>
       {section && <input type="hidden" name="id" value={section.id} />}
-      <Field label="Título" name="title" errors={e.title}>
-        <Input id="title" name="title" defaultValue={v?.title ?? section?.title} required />
-      </Field>
-      <Field label="Texto" name="body" errors={e.body}>
-        <Textarea id="body" name="body" rows={8} defaultValue={v?.body ?? section?.body} required />
-      </Field>
+      <FormSection title="Texto" description="O primeiro texto da lista aparece em destaque na página inicial.">
+        <Field label="Título" name="title" errors={e.title}>
+          <Input id="title" name="title" placeholder="Ex.: Quem somos" defaultValue={v?.title ?? section?.title} required />
+        </Field>
+        <Field label="Texto" name="body" errors={e.body}>
+          <Textarea id="body" name="body" rows={10} defaultValue={v?.body ?? section?.body} required />
+        </Field>
+      </FormSection>
     </>
   );
 }

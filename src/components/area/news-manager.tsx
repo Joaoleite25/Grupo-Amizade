@@ -6,6 +6,7 @@ import { EntityDialog } from "@/components/area/entity-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmit } from "@/components/ui/client";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { FormSection, ImageInput, Switch } from "@/components/ui/form-kit";
 import { Badge, EmptyState } from "@/components/ui/misc";
 import { formatDate } from "@/lib/utils";
 import type { FormState } from "@/lib/validation";
@@ -27,37 +28,56 @@ function NewsFields({ state, news }: { state: FormState; news?: News }) {
   return (
     <>
       {news && <input type="hidden" name="id" value={news.id} />}
-      <Field label="Título" name="title" errors={e.title}>
-        <Input id="title" name="title" defaultValue={v?.title ?? news?.title} required />
-      </Field>
-      <Field label="Notícia" name="body" errors={e.body}>
-        <Textarea id="body" name="body" rows={6} defaultValue={v?.body ?? news?.body} required />
-      </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Foto — computador"
-          name="imageDesktop"
-          errors={e.imageDesktop}
-          hint={news ? "Deixa vazio para manter a atual." : "Horizontal, ex.: 1600×1000."}
-        >
-          <Input id="imageDesktop" name="imageDesktop" type="file" accept="image/*" className="py-2 file:mr-3 file:rounded-md file:border-0 file:bg-surface-2 file:px-2 file:py-1 file:text-xs" required={!news} />
+
+      <FormSection title="Notícia">
+        <Field label="Título" name="title" errors={e.title}>
+          <Input id="title" name="title" placeholder="Ex.: Campanha de Natal superou as expectativas" defaultValue={v?.title ?? news?.title} required />
         </Field>
-        <Field label="Foto — telemóvel" name="imageMobile" errors={e.imageMobile} hint="Opcional. Vertical, ex.: 900×1200.">
-          <Input id="imageMobile" name="imageMobile" type="file" accept="image/*" className="py-2 file:mr-3 file:rounded-md file:border-0 file:bg-surface-2 file:px-2 file:py-1 file:text-xs" />
+        <Field label="Texto" name="body" errors={e.body}>
+          <Textarea id="body" name="body" rows={7} placeholder="Conta o que aconteceu…" defaultValue={v?.body ?? news?.body} required />
         </Field>
-      </div>
-      <Field label="Ligação" name="link" errors={e.link} hint="Opcional — ex.: publicação no Facebook.">
-        <Input id="link" name="link" type="url" placeholder="https://" defaultValue={v?.link ?? news?.link ?? ""} />
-      </Field>
-      <label className="flex items-center gap-3 text-sm">
-        <input
-          type="checkbox"
+        <Field label="Ligação" name="link" errors={e.link} optional hint="Ex.: a publicação no Facebook ou Instagram.">
+          <Input id="link" name="link" type="url" placeholder="https://" defaultValue={v?.link ?? news?.link ?? ""} />
+        </Field>
+      </FormSection>
+
+      <FormSection title="Fotografias" description="A do computador aparece no carrossel e nos cartões; a do telemóvel substitui-a em ecrãs pequenos.">
+        <div className="grid gap-4 sm:grid-cols-[1.6fr_1fr]">
+          <div className="grid gap-1.5">
+            <p className="text-sm font-medium">Computador</p>
+            <ImageInput
+              name="imageDesktop"
+              current={news?.imageDesktop}
+              required
+              aspect="aspect-[16/10]"
+              hint="Horizontal, ex.: 1600×1000."
+              errors={e.imageDesktop}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <p className="flex items-baseline justify-between text-sm font-medium">
+              Telemóvel <span className="text-xs font-normal text-muted">Opcional</span>
+            </p>
+            <ImageInput
+              name="imageMobile"
+              current={news?.imageMobile}
+              removeName="removeImageMobile"
+              aspect="aspect-[3/4]"
+              hint="Vertical, ex.: 900×1200."
+              errors={e.imageMobile}
+            />
+          </div>
+        </div>
+      </FormSection>
+
+      <FormSection title="Publicação">
+        <Switch
           name="published"
           defaultChecked={v ? v.published === "on" : (news?.published ?? true)}
-          className="size-4 accent-[var(--accent)]"
+          label="Publicada"
+          description="Desliga para guardar como rascunho (não aparece no site)."
         />
-        Publicada (aparece no site)
-      </label>
+      </FormSection>
     </>
   );
 }

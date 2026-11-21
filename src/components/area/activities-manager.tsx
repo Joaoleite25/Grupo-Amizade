@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarDays, ClipboardList, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, ClipboardList, Globe, Infinity as InfinityIcon, Lock, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { deleteActivity, saveActivity } from "@/app/actions/admin";
 import { EntityDialog } from "@/components/area/entity-dialog";
 import { Button, buttonClass } from "@/components/ui/button";
 import { ConfirmSubmit } from "@/components/ui/client";
-import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { ChoiceGroup, FormSection, ImageInput } from "@/components/ui/form-kit";
 import { Badge, EmptyState } from "@/components/ui/misc";
 import { formatDateTime } from "@/lib/utils";
 import type { FormState } from "@/lib/validation";
@@ -30,8 +31,6 @@ export type ActivityRow = {
   inputs: { date: string; endsAt: string; registrationOpens: string; registrationEnds: string };
 };
 
-const fileClass = "py-2 file:mr-3 file:rounded-md file:border-0 file:bg-surface-2 file:px-2 file:py-1 file:text-xs";
-
 function ActivityFields({ state, activity }: { state: FormState; activity?: ActivityRow }) {
   const e = state?.errors ?? {};
   const v = state?.values;
@@ -40,88 +39,118 @@ function ActivityFields({ state, activity }: { state: FormState; activity?: Acti
   return (
     <>
       {activity && <input type="hidden" name="id" value={activity.id} />}
-      <Field label="Título" name="title" errors={e.title}>
-        <Input id="title" name="title" defaultValue={v?.title ?? activity?.title} required />
-      </Field>
-      <Field label="Descrição" name="description" errors={e.description}>
-        <Textarea id="description" name="description" rows={5} defaultValue={v?.description ?? activity?.description} required />
-      </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Início da atividade" name="date" errors={e.date}>
-          <Input id="date" name="date" type="datetime-local" defaultValue={v?.date ?? activity?.inputs.date} required />
+      <FormSection title="Informação">
+        <Field label="Título" name="title" errors={e.title}>
+          <Input id="title" name="title" placeholder="Ex.: Caminhada solidária" defaultValue={v?.title ?? activity?.title} required />
         </Field>
-        <Field label="Fim" name="endsAt" errors={e.endsAt} hint="Opcional. Sem fim, os calendários assumem 2 horas.">
-          <Input id="endsAt" name="endsAt" type="datetime-local" defaultValue={v?.endsAt ?? activity?.inputs.endsAt} />
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Abertura inscrições" name="registrationOpens" errors={e.registrationOpens}>
-          <Input
-            id="registrationOpens"
-            name="registrationOpens"
-            type="datetime-local"
-            defaultValue={v?.registrationOpens ?? activity?.inputs.registrationOpens}
+        <Field label="Descrição" name="description" errors={e.description}>
+          <Textarea
+            id="description"
+            name="description"
+            rows={5}
+            placeholder="O que vai acontecer, para quem é, porque vale a pena ir…"
+            defaultValue={v?.description ?? activity?.description}
             required
           />
         </Field>
-        <Field label="Fecho inscrições" name="registrationEnds" errors={e.registrationEnds}>
-          <Input
-            id="registrationEnds"
-            name="registrationEnds"
-            type="datetime-local"
-            defaultValue={v?.registrationEnds ?? activity?.inputs.registrationEnds}
-            required
-          />
-        </Field>
-      </div>
+        <ChoiceGroup
+          label="Quem pode ver e inscrever-se"
+          name="visibility"
+          value={(v?.visibility ?? activity?.visibility ?? "EXTERNAL") as "EXTERNAL" | "INTERNAL"}
+          options={[
+            { value: "EXTERNAL", label: "Externa", description: "Aberta a todos os utilizadores", icon: <Globe /> },
+            { value: "INTERNAL", label: "Interna", description: "Só membros do grupo", icon: <Lock /> },
+          ]}
+        />
+      </FormSection>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Capacidade" name="limited">
-          <Select id="limited" name="limited" value={limited} onChange={(ev) => setLimited(ev.target.value)}>
-            <option value="no">Sem limite</option>
-            <option value="yes">Limitada</option>
-          </Select>
-        </Field>
-        {limited === "yes" ? (
-          <Field label="Limite de pessoas" name="capacity" errors={e.capacity}>
-            <Input id="capacity" name="capacity" type="number" min={1} defaultValue={v?.capacity ?? activity?.capacity ?? ""} required />
+      <FormSection title="Data e hora">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Início" name="date" errors={e.date}>
+            <Input id="date" name="date" type="datetime-local" defaultValue={v?.date ?? activity?.inputs.date} required />
           </Field>
-        ) : (
-          <div className="hidden sm:block" />
-        )}
-        <Field label="Exposição" name="visibility">
-          <Select id="visibility" name="visibility" defaultValue={v?.visibility ?? activity?.visibility ?? "EXTERNAL"}>
-            <option value="EXTERNAL">Externa (todos)</option>
-            <option value="INTERNAL">Interna (membros)</option>
-          </Select>
-        </Field>
-      </div>
+          <Field label="Fim" name="endsAt" errors={e.endsAt} optional hint="Sem fim, os calendários assumem 2 horas.">
+            <Input id="endsAt" name="endsAt" type="datetime-local" defaultValue={v?.endsAt ?? activity?.inputs.endsAt} />
+          </Field>
+        </div>
+      </FormSection>
 
-      <div className="grid gap-4 sm:grid-cols-[1.6fr_1fr]">
-        <Field label="Local" name="location" errors={e.location} hint="Morada ou nome do sítio. Abre no mapa.">
+      <FormSection title="Inscrições" description="Quando abrem e fecham, e quantas pessoas podem ir.">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Abrem" name="registrationOpens" errors={e.registrationOpens}>
+            <Input
+              id="registrationOpens"
+              name="registrationOpens"
+              type="datetime-local"
+              defaultValue={v?.registrationOpens ?? activity?.inputs.registrationOpens}
+              required
+            />
+          </Field>
+          <Field label="Fecham" name="registrationEnds" errors={e.registrationEnds}>
+            <Input
+              id="registrationEnds"
+              name="registrationEnds"
+              type="datetime-local"
+              defaultValue={v?.registrationEnds ?? activity?.inputs.registrationEnds}
+              required
+            />
+          </Field>
+        </div>
+        <ChoiceGroup
+          label="Vagas"
+          name="limited"
+          value={limited as "no" | "yes"}
+          onChange={setLimited}
+          options={[
+            { value: "no", label: "Sem limite", description: "Qualquer pessoa se pode inscrever", icon: <InfinityIcon /> },
+            { value: "yes", label: "Limitadas", description: "Quando esgotar, abre lista de espera", icon: <Users /> },
+          ]}
+        />
+        {limited === "yes" && (
+          <Field label="Número de vagas" name="capacity" errors={e.capacity}>
+            <Input
+              id="capacity"
+              name="capacity"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              placeholder="Ex.: 30"
+              className="max-w-40"
+              defaultValue={v?.capacity ?? activity?.capacity ?? ""}
+              required
+            />
+          </Field>
+        )}
+      </FormSection>
+
+      <FormSection title="Detalhes" description="Aparecem na página da atividade e no email de confirmação.">
+        <Field label="Local" name="location" errors={e.location} optional hint="Morada ou nome do sítio. Abre no mapa.">
           <Input id="location" name="location" placeholder="Ex.: Igreja de São João de Ver" defaultValue={v?.location ?? activity?.location ?? ""} />
         </Field>
-        <Field label="Idade recomendada" name="ages" errors={e.ages} hint="Opcional.">
-          <Input id="ages" name="ages" placeholder="Ex.: 8 aos 14 anos" defaultValue={v?.ages ?? activity?.ages ?? ""} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Idade recomendada" name="ages" errors={e.ages} optional>
+            <Input id="ages" name="ages" placeholder="Ex.: 8 aos 14 anos" defaultValue={v?.ages ?? activity?.ages ?? ""} />
+          </Field>
+          <Field label="Mais informação (link)" name="link" errors={e.link} optional>
+            <Input id="link" name="link" type="url" placeholder="https://" defaultValue={v?.link ?? activity?.link ?? ""} />
+          </Field>
+        </div>
+        <Field label="O que levar" name="bring" errors={e.bring} optional>
+          <Textarea
+            id="bring"
+            name="bring"
+            rows={2}
+            className="min-h-0"
+            placeholder="Ex.: Calçado confortável, água e um lanche."
+            defaultValue={v?.bring ?? activity?.bring ?? ""}
+          />
         </Field>
-      </div>
-      <Field label="O que levar" name="bring" errors={e.bring} hint="Opcional. Aparece na página e no email de confirmação.">
-        <Textarea id="bring" name="bring" rows={2} placeholder="Ex.: Calçado confortável, água e um lanche." defaultValue={v?.bring ?? activity?.bring ?? ""} />
-      </Field>
+      </FormSection>
 
-      <Field label="Foto" name="image" errors={e.image} hint={activity?.image ? "Deixa vazio para manter a atual." : "Opcional."}>
-        <Input id="image" name="image" type="file" accept="image/*" className={fileClass} />
-      </Field>
-      {activity?.image && (
-        <label className="-mt-2 flex items-center gap-3 text-sm text-muted">
-          <input type="checkbox" name="removeImage" className="size-4 accent-[var(--accent)]" /> Remover a foto atual
-        </label>
-      )}
-      <Field label="Ligação" name="link" errors={e.link} hint="Opcional.">
-        <Input id="link" name="link" type="url" placeholder="https://" defaultValue={v?.link ?? activity?.link ?? ""} />
-      </Field>
+      <FormSection title="Fotografia" description="Opcional. Aparece no cartão e no topo da página da atividade.">
+        <ImageInput name="image" current={activity?.image} removeName="removeImage" errors={e.image} />
+      </FormSection>
     </>
   );
 }
@@ -149,6 +178,7 @@ export function ActivitiesManager({ activities, nowMs }: { activities: ActivityR
         </div>
         <EntityDialog
           title="Nova atividade"
+          description="Preenche o essencial; os detalhes podem ficar para depois."
           action={saveActivity}
           submitLabel="Criar"
           wide
@@ -197,6 +227,7 @@ export function ActivitiesManager({ activities, nowMs }: { activities: ActivityR
                       </Link>
                       <EntityDialog
                         title="Editar atividade"
+                        description={a.title}
                         action={saveActivity}
                         wide
                         trigger={(open) => (

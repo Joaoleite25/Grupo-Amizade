@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, PanelBottom, Pencil, Plus, Trash2 } from "lucide-react";
+import { Info, Link2, PanelBottom, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteFooter, saveFooter } from "@/app/actions/admin";
 import { EntityDialog } from "@/components/area/entity-dialog";
 import { Button } from "@/components/ui/button";
 import { ConfirmSubmit } from "@/components/ui/client";
-import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { ChoiceGroup, FormSection } from "@/components/ui/form-kit";
 import { EmptyState } from "@/components/ui/misc";
 import type { FormState } from "@/lib/validation";
 
@@ -15,25 +16,38 @@ type Item = { id: string; kind: "INFO" | "SOCIAL"; title: string; content: strin
 function FooterFields({ state, item }: { state: FormState; item?: Item }) {
   const e = state?.errors ?? {};
   const v = state?.values;
-  const [kind, setKind] = useState(v?.kind ?? item?.kind ?? "INFO");
+  const [kind, setKind] = useState<Item["kind"]>((v?.kind as Item["kind"]) ?? item?.kind ?? "INFO");
+  const social = kind === "SOCIAL";
   return (
     <>
       {item && <input type="hidden" name="id" value={item.id} />}
-      <Field label="Tipo" name="kind">
-        <Select id="kind" name="kind" value={kind} onChange={(ev) => setKind(ev.target.value as Item["kind"])}>
-          <option value="INFO">Informação (morada, email, telefone...)</option>
-          <option value="SOCIAL">Rede social</option>
-        </Select>
-      </Field>
-      <Field label="Título" name="title" errors={e.title} hint={kind === "SOCIAL" ? "Ex.: Instagram, Facebook" : "Ex.: Morada, Email, Telefone"}>
-        <Input id="title" name="title" defaultValue={v?.title ?? item?.title} required />
-      </Field>
-      <Field label={kind === "SOCIAL" ? "Nome a mostrar" : "Informação"} name="content" errors={e.content}>
-        <Textarea id="content" name="content" rows={3} className="min-h-0" defaultValue={v?.content ?? item?.content} required />
-      </Field>
-      <Field label="Link" name="url" errors={e.url} hint={kind === "SOCIAL" ? "Obrigatório para redes sociais." : "Opcional."}>
-        <Input id="url" name="url" type="url" placeholder="https://" defaultValue={v?.url ?? item?.url ?? ""} />
-      </Field>
+      <FormSection title="Tipo">
+        <ChoiceGroup
+          label="O que queres mostrar no rodapé?"
+          name="kind"
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: "INFO", label: "Informação", description: "Morada, email, telefone…", icon: <Info /> },
+            { value: "SOCIAL", label: "Rede social", description: "Instagram, Facebook…", icon: <Link2 /> },
+          ]}
+        />
+      </FormSection>
+      <FormSection title={social ? "Rede social" : "Informação"}>
+        <Field label="Título" name="title" errors={e.title}>
+          <Input id="title" name="title" placeholder={social ? "Ex.: Instagram" : "Ex.: Morada"} defaultValue={v?.title ?? item?.title} required />
+        </Field>
+        <Field label={social ? "Nome a mostrar" : "Texto"} name="content" errors={e.content}>
+          {social ? (
+            <Input id="content" name="content" placeholder="Ex.: @grupoamizade" defaultValue={v?.content ?? item?.content} required />
+          ) : (
+            <Textarea id="content" name="content" rows={3} className="min-h-0" placeholder="Ex.: Rua da Igreja, 4520 São João de Ver" defaultValue={v?.content ?? item?.content} required />
+          )}
+        </Field>
+        <Field label="Link" name="url" errors={e.url} optional={!social} hint={social ? "Endereço da página na rede social." : undefined}>
+          <Input id="url" name="url" type="url" placeholder="https://" defaultValue={v?.url ?? item?.url ?? ""} required={social} />
+        </Field>
+      </FormSection>
     </>
   );
 }

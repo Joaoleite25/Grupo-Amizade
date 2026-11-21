@@ -78,6 +78,19 @@ dialog::backdrop {
   background: rgb(12 10 9 / 0.45);
   backdrop-filter: blur(2px);
 }
+/* Painel lateral (criar/editar na área reservada): encostado à direita e entra pela direita */
+dialog.sheet {
+  margin: 0 0 0 auto;
+}
+dialog.sheet[open] {
+  animation: sheet-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes sheet-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
 @keyframes dialog-in {
   from {
     opacity: 0;

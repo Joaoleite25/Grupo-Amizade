@@ -30,6 +30,7 @@ export function Field({
   name,
   hint,
   errors,
+  optional,
   className,
   children,
 }: {
@@ -37,12 +38,17 @@ export function Field({
   name: string;
   hint?: React.ReactNode;
   errors?: string[];
+  /** Mostra "Opcional" ao lado do nome do campo. */
+  optional?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className={cn("grid gap-1.5", className)}>
-      <Label htmlFor={name}>{label}</Label>
+      <Label htmlFor={name} className="flex items-baseline justify-between gap-2">
+        {label}
+        {optional && <span className="text-xs font-normal text-muted">Opcional</span>}
+      </Label>
       {children}
       {hint && !errors?.length && <p className="text-xs text-muted">{hint}</p>}
       {errors?.map((e) => (

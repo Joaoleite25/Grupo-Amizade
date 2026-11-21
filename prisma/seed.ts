@@ -93,7 +93,44 @@ async function main() {
   if (process.env.SEED_DEMO === "true") await demo();
 }
 
+/**
+ * Uma conta de demonstração por nível, para ver a área reservada com os olhos de cada pessoa.
+ * Só existe com SEED_DEMO=true (nunca em produção) e usa a password SEED_DEMO_PASSWORD do .env.
+ */
+async function demoAccounts() {
+  const password = process.env.SEED_DEMO_PASSWORD;
+  if (!password) {
+    console.log("! SEED_DEMO_PASSWORD não definido — contas de demonstração não criadas");
+    return;
+  }
+  const hash = await bcrypt.hash(password, 12);
+  const accounts = [
+    { username: "utilizador", name: "Utilizador Demo", level: 1, birthDate: "2000-05-10" },
+    // Menor de 16 anos: para ver o pedido de autorização do encarregado nas inscrições.
+    { username: "jovem", name: "Jovem Demo", level: 1, birthDate: "2013-09-15" },
+    { username: "staff", name: "Staff Demo", level: 2, birthDate: "1998-03-22" },
+    { username: "direcao", name: "Direção Demo", level: 3, birthDate: "1985-11-02" },
+  ];
+  for (const a of accounts) {
+    const role = await db.role.findUniqueOrThrow({ where: { level: a.level } });
+    await db.user.upsert({
+      where: { username: a.username },
+      update: {},
+      create: {
+        username: a.username,
+        name: a.name,
+        email: `${a.username}@grupoamizade.test`,
+        birthDate: new Date(a.birthDate),
+        passwordHash: hash,
+        roleId: role.id,
+      },
+    });
+  }
+  console.log(`✓ Contas de demonstração (${accounts.map((a) => a.username).join(", ")})`);
+}
+
 async function demo() {
+  await demoAccounts();
   if ((await db.news.count()) === 0) {
     await db.news.createMany({
       data: [
